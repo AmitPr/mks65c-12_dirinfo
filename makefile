@@ -5,6 +5,6 @@ main.o: main.c
 
 .PHONY: clean run 
 clean: 
-	-rm *.o tmp prog
+	-rm *.o
 run: prog
 	./prog

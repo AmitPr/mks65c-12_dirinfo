@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <dirent.h>
+#include <errno.h>
 
 void format_size(char *str, long size)
 {
@@ -22,24 +23,49 @@ void format_size(char *str, long size)
     sprintf(str, fstring, s, suffixes[order]);
 }
 
-void print_perms(int m){
-    printf((m&S_IRUSR)?"r":"-");
-    printf((m&S_IWUSR)?"w":"-");
-    printf((m&S_IXUSR)?"x":"-");
-    printf((m&S_IRGRP)?"r":"-");
-    printf((m&S_IWGRP)?"w":"-");
-    printf((m&S_IXGRP)?"x":"-");
-    printf((m&S_IROTH)?"r":"-");
-    printf((m&S_IWOTH)?"w":"-");
-    printf((m&S_IXOTH)?"x":"-");
+void print_perms(int m)
+{
+    printf((m & S_IRUSR) ? "r" : "-");
+    printf((m & S_IWUSR) ? "w" : "-");
+    printf((m & S_IXUSR) ? "x" : "-");
+    printf((m & S_IRGRP) ? "r" : "-");
+    printf((m & S_IWGRP) ? "w" : "-");
+    printf((m & S_IXGRP) ? "x" : "-");
+    printf((m & S_IROTH) ? "r" : "-");
+    printf((m & S_IWOTH) ? "w" : "-");
+    printf((m & S_IXOTH) ? "x" : "-");
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    printf("Statistics for directory: .\n");
-    printf("%-20s\tType\tSize\tPermissions\n", "Name");
     DIR *d;
-    d = opendir(".");
+    char *dir_name;
+    if (argc > 1)
+    {
+        d = opendir(argv[1]);
+        dir_name = argv[1];
+    }
+    else
+    {
+        char buffer[128];
+        printf("Directory to parse: ");
+        fgets(buffer, sizeof(buffer), stdin);
+        int len = strlen(buffer) - 1;
+        if (buffer[len] == '\n')
+        {
+            buffer[len] = '\0';
+        }
+        d = opendir(buffer);
+        dir_name = buffer;
+    }
+
+    if (d == NULL)
+    {
+        printf("error: cannot access '%s': %s\n", dir_name, strerror(errno));
+        return 1;
+    }
+    printf("Statistics for directory: %s\n", dir_name);
+    printf("%-20s\tType\tSize\tPermissions\n", "Name");
     struct dirent *entry;
     entry = readdir(d);
     long total_size = 0;
@@ -68,7 +94,15 @@ int main()
             }
             char formatted[10];
             format_size(formatted, file_stat.st_size);
-            printf("%-20s\t%s\t%s\t", entry->d_name, type, formatted);
+            if (strlen(entry->d_name) >= 23)
+            {
+                printf("%-.20s... ", entry->d_name);
+            }
+            else
+            {
+                printf("%-20s\t", entry->d_name);
+            }
+            printf("%s\t%s\t", type, formatted);
             print_perms(file_stat.st_mode);
             printf("\n");
         }
